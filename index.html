@@ -1,1 +1,201 @@
-"Hello World" 
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Случайный пост из Rule34</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #ff4081;
+        }
+        input[type="text"] {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin: 10px 0;
+            width: 80%;
+            max-width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff4081;
+            color: #fff;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #e91e63;
+        }
+        .container {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #2c2c2c;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .container h2 {
+            color: #ff4081;
+            margin-bottom: 20px;
+        }
+        img, video {
+            max-width: 100%;
+            max-height: 500px;
+            height: auto;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        #loading {
+            display: none;
+            color: #ff4081;
+        }
+        .enlarged {
+            transform: scale(2.5);
+            cursor: zoom-out;
+        }
+        a {
+            color: #ff4081;
+            text-decoration: none;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Случайный пост из Rule34</h1>
+
+<input type="text" id="tagInput" placeholder="Введите тег...">
+<button id="randomPostButton">Получить случайный пост</button>
+<button id="randomVideoButton">Получить случайное видео</button>
+<button id="searchImageButton">Поиск изображений по тегу</button>
+<button id="searchVideoButton">Поиск видео по тегу</button>
+
+<div class="container" id="imageContainer">
+    <h2>Изображения</h2>
+</div>
+<div class="container" id="videoContainer">
+    <h2>Видео</h2>
+</div>
+<p id="loading">Загрузка...</p>
+
+<script>
+    const imageContainer = document.getElementById('imageContainer');
+    const videoContainer = document.getElementById('videoContainer');
+    const loadingIndicator = document.getElementById('loading');
+
+    function fetchRandomPost(url, isVideo) {
+        showLoading(true);
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Ошибка сети: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * data.length);
+                    const post = data[randomIndex];
+
+                    const mediaElement = createMediaElement(post);
+
+                    const container = isVideo ? videoContainer : imageContainer;
+                    container.innerHTML = `
+                        <h3>${post.title || 'Без названия'}</h3>
+                        <p>Автор: ${post.owner || 'Неизвестен'}</p>
+                        <p>Теги: ${post.tags.split(" ").join(", ")}</p>
+                        <p>Дата: ${new Date(post.created_at * 1000).toLocaleDateString()}</p>
+                        <p>Рейтинг: ${post.score}</p>
+                        <a href="${post.file_url}" download="file.${post.file_ext}" target="_blank">Скачать файл</a>
+                    `;
+                    container.appendChild(mediaElement);
+                } else {
+                    showLoading(false);
+                    const container = isVideo ? videoContainer : imageContainer;
+                    container.innerHTML = '<p>Посты не найдены.</p>';
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                console.error('Ошибка:', error);
+                const container = isVideo ? videoContainer : imageContainer;
+                container.innerHTML = `<p>Произошла ошибка при загрузке поста: ${error.message}</p>`;
+            });
+    }
+
+    function createMediaElement(post) {
+        let mediaElement;
+        if (post.file_ext === 'mp4' || post.file_ext === 'm4v') {
+            mediaElement = document.createElement('video');
+            mediaElement.controls = true;
+            mediaElement.src = post.file_url;
+            mediaElement.style.display = 'block';
+        } else {
+            mediaElement = document.createElement('img');
+            mediaElement.src = post.file_url;
+            mediaElement.alt = post.title || 'Изображение';
+            mediaElement.classList.add('enlarge');
+            mediaElement.addEventListener('click', toggleEnlargeImage);
+        }
+        showLoading(false);
+        return mediaElement;
+    }
+
+    function toggleEnlargeImage(event) {
+        const img = event.target;
+        if (img.classList.contains('enlarged')) {
+            img.classList.remove('enlarged');
+        } else {
+            img.classList.add('enlarged');
+        }
+    }
+
+    function showLoading(isLoading) {
+        loadingIndicator.style.display = isLoading ? 'block' : 'none';
+    }
+
+    document.getElementById('randomPostButton').addEventListener('click', function() {
+        fetchRandomPost('https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&json=1', false);
+    });
+
+    document.getElementById('randomVideoButton').addEventListener('click', function() {
+        fetchRandomPost('https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=mp4+gif&json=1', true);
+    });
+
+    document.getElementById('searchImageButton').addEventListener('click', function() {
+        const tag = document.getElementById('tagInput').value.trim();
+        if (tag) {
+            fetchRandomPost(`https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${encodeURIComponent(tag)}&json=1`, false);
+        } else {
+            alert('Пожалуйста, введите тег.');
+        }
+    });
+
+    document.getElementById('searchVideoButton').addEventListener('click', function() {
+        const tag = document.getElementById('tagInput').value.trim();
+        if (tag) {
+            fetchRandomPost(`https://api.rule34.xxx/index.php?page=dapi&s=post&q=index&tags=${encodeURIComponent(tag)}+mp4&json=1`, true);
+        } else {
+            alert('Пожалуйста, введите тег.');
+        }
+    });
+</script>
+
+</body>
+</html>
